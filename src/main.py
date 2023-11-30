@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache import FastAPICache
@@ -34,3 +34,25 @@ async def startup():
 async def long_op():
     time.sleep(3)
     return {"operation": "longo"}
+
+
+connected_users = set()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    connected_users.add(websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text("Enviando mensagem: "+ data)
+    except:
+        connected_users.remove(websocket)
+
+
+@app.post("/send_message_to_all_websocket_users")
+async def send_message_to_all_websocket_users(payload: dict):
+    for user in connected_users:
+        await user.send_json(payload)
+    return {"message": "ok"}
