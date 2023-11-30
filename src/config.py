@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SecretStr
+from pydantic import SecretStr, Field
 import os
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -18,5 +18,8 @@ class Settings(BaseSettings):
     secret_key: SecretStr
     algorithm: str
     access_token_expire_minutes: int
+
+    redis_host: str = Field("localhost")
+    redis_port: int = Field(6379)
 
 settings = Settings()
