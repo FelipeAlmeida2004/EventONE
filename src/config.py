@@ -15,4 +15,8 @@ class Settings(BaseSettings):
     db_pass: SecretStr
     db_name: str
 
+    secret_key: SecretStr
+    algorithm: str
+    access_token_expire_minutes: int
+
 settings = Settings()

@@ -2,9 +2,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, Text, Boolean, DateTime, func
 from typing import List
 from datetime import datetime
+from passlib.context import CryptContext
 
 from src.database import Base
 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class User(Base):
     __tablename__ = "users"
@@ -20,3 +23,14 @@ class User(Base):
     reservations: Mapped[List["Reservation"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     comments: Mapped[List["Comment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     
+
+    @property
+    def password_setter(self):
+        raise AttributeError("Senha não pode ser lida")
+    
+    @password_setter.setter
+    def password_setter(self, password: str) -> None:
+        self.password = pwd_context.hash(password)
+    
+    def check_password(self, plane_password: str) -> bool:
+        return pwd_context.verify(plane_password, self.password)

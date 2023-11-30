@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.database import get_async_session
 from src.users.models import User
-from src.users.schemas import UserResponse, UserCreate, UserUpdate
+from src.users.schemas import UserResponse, UserCreate, UserUpdate, UserLogin
 from src.events.schemas import EventResponse
+from src.security import sign_jwt, JWTBearer
 
 from sqlalchemy import select
 
@@ -14,6 +15,18 @@ router = APIRouter(
     tags=["Users"]
 )
 
+@router.get("/me")
+async def me(user_id: int = Depends(JWTBearer()), session: AsyncSession = Depends(get_async_session)):
+    query = select(User).where(User.id == user_id)
+    query_result = await session.scalars(query)
+    result = query_result.first()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    return result
+
+
 @router.get("/", response_model=List[UserResponse])
 async def get_users(session: AsyncSession = Depends(get_async_session)):
     query = select(User)
@@ -21,11 +34,24 @@ async def get_users(session: AsyncSession = Depends(get_async_session)):
     result = query_result.unique().all()
     return result
 
+
+@router.post("/login")
+async def login(payload: UserLogin, session: AsyncSession = Depends(get_async_session)):
+    query = select(User).where(User.username == payload.username)
+    query_result = await session.scalars(query)
+    result = query_result.first()
+
+    if result is None and result.check_password(payload.password):
+        raise HTTPException(status_code=404, detail="Usuário ou senha estão incorretos.")
+
+    return sign_jwt(result.id)
+
+
 @router.post("/", response_model=UserResponse)
 async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_async_session)):
     new_user = User(
         username=payload.username,
-        password=payload.password,
+        password_setter=payload.password,
         email=payload.email,
         is_admin=payload.is_admin
     )
